@@ -1,12 +1,19 @@
 import React, { useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import {
+  incrementQuantity,
+  decrementQuantity,
+  removeFromCart,
+} from "../../store/reducer/cart";
 import { Table, Button, Container, Row, Col } from "react-bootstrap";
 import axios from "axios";
 import emptyCartImg from "../../assets/empty-cart.png";
 import Notification from "../../Components/Notification";
 import paymentSuccessfulImg from "../../assets/payment-successful.png";
 
-const CartPage = ({ initialCartItems }) => {
-  const [cartItems, setCartItems] = useState(initialCartItems);
+const CartPage = () => {
+  const dispatch = useDispatch();
+  const { items: cartItems } = useSelector((state) => state.cart);
   const [notificationData, setNotificationData] = useState({
     type: "success",
     message: "",
@@ -14,33 +21,6 @@ const CartPage = ({ initialCartItems }) => {
   });
   const [showNotification, setShowNotification] = useState(false);
   const [paymentSuccessful, setPaymentSuccessful] = useState(false);
-
-  const incrementQuantity = (id) => {
-    const updatedCart = cartItems.map((item) =>
-      item.id === id ? { ...item, quantity: item.quantity + 1 } : item
-    );
-    setCartItems(updatedCart);
-  };
-
-  const decrementQuantity = (id) => {
-    const updatedCart = cartItems.map((item) =>
-      item.id === id && item.quantity > 1
-        ? { ...item, quantity: item.quantity - 1 }
-        : item
-    );
-    setCartItems(updatedCart);
-  };
-
-  const removeFromCart = (id) => {
-    const updatedCart = cartItems.filter((item) => item.id !== id);
-    setCartItems(updatedCart);
-    setNotificationData({
-      type: "success",
-      message: "Item removed from cart",
-      duration: 3000,
-    });
-    setShowNotification(true);
-  };
 
   const handleCheckout = async () => {
     try {
@@ -151,15 +131,14 @@ const CartPage = ({ initialCartItems }) => {
                     </tr>
                   </thead>
                   <tbody>
-                    {cartItems?.map((item) => (
-                      <tr key={item.id}>
+                    {cartItems.map((item) => (
+                      <tr key={item._id}>
                         <td>
                           <img
                             src={item.image}
                             alt="Product"
                             height={100}
                             width={100}
-                            className="img-fluid"
                           />
                         </td>
                         <td>${item.price}</td>
@@ -167,25 +146,29 @@ const CartPage = ({ initialCartItems }) => {
                           <Button
                             variant="outline-secondary"
                             size="sm"
-                            onClick={() => decrementQuantity(item.id)}
+                            onClick={() =>
+                              dispatch(decrementQuantity(item._id))
+                            }
                             disabled={item.quantity === 1}
                           >
                             -
-                          </Button>{" "}
-                          {item.quantity}{" "}
+                          </Button>
+                          {item.quantity}
                           <Button
                             variant="outline-secondary"
                             size="sm"
-                            onClick={() => incrementQuantity(item.id)}
+                            onClick={() =>
+                              dispatch(incrementQuantity(item._id))
+                            }
                           >
                             +
                           </Button>
                         </td>
-                        <td>${(item.price * item.quantity).toFixed(2)}</td>
+                        <td>${item.price * item.quantity}</td>
                         <td>
                           <Button
                             variant="danger"
-                            onClick={() => removeFromCart(item.id)}
+                            onClick={() => dispatch(removeFromCart(item._id))}
                           >
                             Remove
                           </Button>

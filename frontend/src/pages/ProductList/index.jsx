@@ -1,16 +1,20 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
+import { useDispatch, useSelector } from "react-redux";
+import { fetchProducts, deleteProduct } from "../../store/reducer/product";
+import { addToCart } from "../../store/reducer/cart";
 import ProductCard from "../../Components/ProductCard";
 import { Container, Row, Col, Alert } from "react-bootstrap";
 import Pagination from "../../Components/Pagination";
 import NoDataImg from "../../assets/no-data.avif";
 import Notification from "../../Components/Notification";
 
-const ProductList = ({ sortByPrice, searchQuery, addToCart }) => {
-  const [products, setProducts] = useState([]);
+const ProductList = () => {
+  const dispatch = useDispatch();
+  const { products, searchQuery, sortByPrice, isError, status } = useSelector(
+    (state) => state.products
+  );
   const [currentPage, setCurrentPage] = useState(1);
   const [productsPerPage] = useState(8);
-  const [isError, setIsError] = useState(false);
   const [notificationData, setNotificationData] = useState({
     type: "success",
     message: "",
@@ -19,73 +23,39 @@ const ProductList = ({ sortByPrice, searchQuery, addToCart }) => {
   const [showNotification, setShowNotification] = useState(false);
 
   useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        const response = await axios.get(
-          `${process.env.REACT_APP_BACKEND_URL}/api/product`
-        );
-        if (response.data.length === 0) {
-          setIsError(true);
-        } else {
-          setProducts(response.data);
-          setIsError(false);
-        }
-      } catch (error) {
-        console.error("Error fetching products:", error);
-        setIsError(true);
-      }
-    };
-
-    fetchProducts();
-  }, []);
-
-  const handleDelete = async (id) => {
-    try {
-      await axios.delete(
-        `${process.env.REACT_APP_BACKEND_URL}/api/product/${id}`
-      );
-      setProducts((prevProducts) =>
-        prevProducts.filter((product) => product._id !== id)
-      );
-      setShowNotification(true);
-      setNotificationData({
-        type: "success",
-        message: "Product deleted successfully",
-        duration: 3000,
-      });
-    } catch (error) {
-      setShowNotification(true);
-      setNotificationData({
-        type: "error",
-        message: "Error deleting product",
-        duration: 3000,
-      });
-      console.error("Error deleting product:", error);
+    if (status === "idle") {
+      dispatch(fetchProducts());
     }
-  };
+  }, [dispatch, status]);
 
-  const filteredProducts = products.filter(
-    (product) =>
-      product.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      product.description.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  const sortedProducts = [...filteredProducts].sort((a, b) => {
-    if (sortByPrice) {
-      return a.price - b.price;
-    }
-    return 0;
-  });
-
-  const handleAddToCart = (product) => {
-    setShowNotification(true);
-    addToCart(product);
+  const handleDelete = (id) => {
+    dispatch(deleteProduct(id));
     setNotificationData({
       type: "success",
-      message: "Product added to the cart successfully",
+      message: "Product deleted successfully",
       duration: 3000,
     });
+    setShowNotification(true);
   };
+
+  const handleAddToCart = (product) => {
+    dispatch(addToCart(product));
+    setNotificationData({
+      type: "success",
+      message: "Product added to cart successfully",
+      duration: 3000,
+    });
+    setShowNotification(true);
+  };
+
+  const filteredProducts = products.filter((product) =>
+    product.title.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const sortedProducts = sortByPrice
+    ? filteredProducts.sort((a, b) => a.price - b.price)
+    : filteredProducts;
+
   const indexOfLastProduct = currentPage * productsPerPage;
   const indexOfFirstProduct = indexOfLastProduct - productsPerPage;
   const currentProducts = sortedProducts.slice(
@@ -118,34 +88,31 @@ const ProductList = ({ sortByPrice, searchQuery, addToCart }) => {
             className="img-fluid mb-4"
           />
           <Alert variant="danger">
-            No products available or failed to load products. Please try again
-            later.
+            No products available or failed to load products.
           </Alert>
         </div>
       ) : (
         <>
           <Row>
-            {currentProducts?.map((product, index) => (
-              <Col xs={12} sm={6} md={4} lg={3} key={index}>
+            {currentProducts.map((product) => (
+              <Col xs={12} sm={6} md={4} lg={3} key={product._id}>
                 <ProductCard
                   id={product._id}
                   title={product.title}
                   imageSrc={product.image}
                   description={product.description}
-                  onDelete={handleDelete}
+                  onDelete={() => handleDelete(product._id)}
                   price={product.price}
                   onAddToCart={() => handleAddToCart(product)}
                 />
               </Col>
             ))}
           </Row>
-          {currentProducts.length > 0 && (
-            <Pagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              paginate={paginate}
-            />
-          )}
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            paginate={paginate}
+          />
         </>
       )}
     </Container>
